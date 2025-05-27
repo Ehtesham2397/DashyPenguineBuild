@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>DashyPenguin</title>
+  <title>DashyPenguine</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png">
   <link rel="stylesheet" href="TemplateData/style.css">
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
 
   <script>
+    // ✅ Load Solana Web3 Safely
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
       script.src = "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
@@ -37,48 +37,53 @@
     <div id="unity-footer">
       <div id="unity-logo-title-footer"></div>
       <div id="unity-fullscreen-button"></div>
-      <div id="unity-build-title">DashyPenguin</div>
+      <div id="unity-build-title">DashyPenguine</div>
     </div>
   </div>
 
   <script>
     window.addEventListener('load', function () {
       loadSolanaWeb3(() => {
-        const canvas = document.querySelector("#unity-canvas");
+        var canvas = document.querySelector("#unity-canvas");
 
         function unityShowBanner(msg, type) {
-          const warningBanner = document.querySelector("#unity-warning");
+          var warningBanner = document.querySelector("#unity-warning");
           function updateBannerVisibility() {
             warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
           }
-          const div = document.createElement('div');
+          var div = document.createElement('div');
           div.innerHTML = msg;
           warningBanner.appendChild(div);
-          if (type === 'error') div.style = 'background: red; padding: 10px;';
-          else if (type === 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(() => {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
+          if (type == 'error') div.style = 'background: red; padding: 10px;';
+          else {
+            if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+            setTimeout(() => {
+              warningBanner.removeChild(div);
+              updateBannerVisibility();
+            }, 5000);
+          }
           updateBannerVisibility();
         }
 
-        const buildUrl = "Build";
-        const loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
-        const config = {
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
+        var config = {
           arguments: [],
           dataUrl: buildUrl + "/LocalFlappyBirdBuild.data",
           frameworkUrl: buildUrl + "/LocalFlappyBirdBuild.framework.js",
           codeUrl: buildUrl + "/LocalFlappyBirdBuild.wasm",
           streamingAssetsUrl: "StreamingAssets",
           companyName: "GameBoom",
-          productName: "DashyPenguin",
+          productName: "DashyPenguine",
           productVersion: "0.1",
           showBanner: unityShowBanner,
         };
 
-        // 🧠 Mobile Responsive Setup
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          var meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+          document.getElementsByTagName('head')[0].appendChild(meta);
           document.querySelector("#unity-container").className = "unity-mobile";
           canvas.className = "unity-mobile";
         } else {
@@ -88,7 +93,7 @@
 
         document.querySelector("#unity-loading-bar").style.display = "block";
 
-        const script = document.createElement("script");
+        var script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = () => {
           createUnityInstance(canvas, config, (progress) => {
@@ -99,61 +104,46 @@
               unityInstance.SetFullscreen(1);
             };
 
-            // ✅ Add this to allow calling JS from Unity
+            // ✅ Define BuyLivesJS after Unity and Solana Web3 are ready
             window.BuyLivesJS = function (receiver, lamports) {
-              try {
-                const pubkey = new solanaWeb3.PublicKey(receiver);
-              } catch (e) {
-                console.error('❌ Invalid public key:', e.message);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Invalid public key');
-                return;
-              }
-
               if (!window.solana || !window.solana.isConnected) {
-                console.error('❌ Wallet not connected');
+                console.error('Wallet not connected');
                 unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Wallet not connected');
                 return;
               }
 
               const connection = new solanaWeb3.Connection(
-                "https://mainnet.helius-rpc.com/?api-key=cc83dfe3-b6e9-483b-b852-b790275d8b73",
-                'finalized'
+                solanaWeb3.clusterApiUrl('devnet'),
+                'confirmed'
               );
 
               const transaction = new solanaWeb3.Transaction().add(
                 solanaWeb3.SystemProgram.transfer({
                   fromPubkey: window.solana.publicKey,
                   toPubkey: new solanaWeb3.PublicKey(receiver),
-                  lamports: parseInt(lamports),
+                  lamports: parseInt(lamports)
                 })
               );
 
               transaction.feePayer = window.solana.publicKey;
 
-              connection.getLatestBlockhash()
-                .then((blockhashObj) => {
-                  transaction.recentBlockhash = blockhashObj.blockhash;
+              connection.getRecentBlockhash()
+                .then((recentBlockhash) => {
+                  transaction.recentBlockhash = recentBlockhash.blockhash;
                   return window.solana.signTransaction(transaction);
                 })
                 .then((signed) => connection.sendRawTransaction(signed.serialize()))
-                .then((signature) => {
-                  console.log('🔄 Transaction sent. Signature:', signature);
-                  return connection.confirmTransaction(signature, 'finalized');
-                })
-                .then((confirmation) => {
-                  if (confirmation.value.err) {
-                    console.error('❌ Transaction failed:', confirmation.value.err);
-                    unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Transaction failed');
-                  } else {
-                    console.log('✅ Transaction confirmed');
-                    unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
-                  }
+                .then((signature) => connection.confirmTransaction(signature, 'confirmed'))
+                .then(() => {
+                  console.log('✅ Transaction confirmed');
+                  unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
                 })
                 .catch((err) => {
-                  console.error('❌ Error:', err);
-                  unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message || 'Unknown error');
+                  console.error('❌ Transaction failed:', err);
+                  unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
                 });
             };
+
           }).catch((message) => {
             alert(message);
           });
