@@ -113,9 +113,9 @@
               }
 
               const connection = new solanaWeb3.Connection(
-                solanaWeb3.clusterApiUrl('devnet'),
-                'confirmed'
-              );
+      "https://mainnet.helius-rpc.com/?api-key=cc83dfe3-b6e9-483b-b852-b790275d8b73",
+      'finalized'
+    );
 
               const transaction = new solanaWeb3.Transaction().add(
                 solanaWeb3.SystemProgram.transfer({
