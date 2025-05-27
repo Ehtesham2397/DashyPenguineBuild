@@ -15,10 +15,12 @@
       script.onload = () => {
         window.solanaWeb3 = solanaWeb3;
         console.log("✅ Solana Web3 Loaded");
+		 alert('✅ Solana Web3 Loaded');
         callback();
       };
       script.onerror = () => {
         console.error("❌ Failed to load Solana Web3");
+		 alert('❌ Failed to load Solana Web3');
       };
       document.head.appendChild(script);
     }
@@ -108,14 +110,15 @@
             window.BuyLivesJS = function (receiver, lamports) {
               if (!window.solana || !window.solana.isConnected) {
                 console.error('Wallet not connected');
+				 alert('Wallet not connected');
                 unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Wallet not connected');
                 return;
               }
 
               const connection = new solanaWeb3.Connection(
-      "https://mainnet.helius-rpc.com/?api-key=cc83dfe3-b6e9-483b-b852-b790275d8b73",
-      'finalized'
-    );
+                solanaWeb3.clusterApiUrl('devnet'),
+                'confirmed'
+              );
 
               const transaction = new solanaWeb3.Transaction().add(
                 solanaWeb3.SystemProgram.transfer({
@@ -136,10 +139,12 @@
                 .then((signature) => connection.confirmTransaction(signature, 'confirmed'))
                 .then(() => {
                   console.log('✅ Transaction confirmed');
+				     alert('✅ Transaction confirmed');
                   unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
                 })
                 .catch((err) => {
                   console.error('❌ Transaction failed:', err);
+				   alert('❌ Transaction failed:', err);
                   unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
                 });
             };
