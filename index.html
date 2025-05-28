@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>DashyPenguine</title>
+  <title>DashyPenguin</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png">
   <link rel="stylesheet" href="TemplateData/style.css">
 
   <script>
-  
     // ✅ Load Solana Web3 Safely
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
@@ -16,16 +15,16 @@
       script.onload = () => {
         window.solanaWeb3 = solanaWeb3;
         console.log("✅ Solana Web3 Loaded");
+		 alert('✅ Solana Web3 Loaded');
         callback();
       };
       script.onerror = () => {
         console.error("❌ Failed to load Solana Web3");
+		 alert('❌ Failed to load Solana Web3');
       };
       document.head.appendChild(script);
     }
   </script>
-
-
 </head>
 <body>
   <div id="unity-container" class="unity-desktop">
@@ -40,7 +39,7 @@
     <div id="unity-footer">
       <div id="unity-logo-title-footer"></div>
       <div id="unity-fullscreen-button"></div>
-      <div id="unity-build-title">DashyPenguine</div>
+      <div id="unity-build-title">DashyPenguin</div>
     </div>
   </div>
 
@@ -111,6 +110,7 @@
             window.BuyLivesJS = function (receiver, lamports) {
               if (!window.solana || !window.solana.isConnected) {
                 console.error('Wallet not connected');
+				 alert('Wallet not connected');
                 unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Wallet not connected');
                 return;
               }
@@ -139,10 +139,12 @@
                 .then((signature) => connection.confirmTransaction(signature, 'confirmed'))
                 .then(() => {
                   console.log('✅ Transaction confirmed');
+				     alert('✅ Transaction confirmed');
                   unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
                 })
                 .catch((err) => {
                   console.error('❌ Transaction failed:', err);
+				   alert('❌ Transaction failed:', err);
                   unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
                 });
             };
