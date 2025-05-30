@@ -17,6 +17,9 @@
         console.log("✅ Solana Web3 Loaded");
         callback();
       };
+	  window.solana.on('disconnect', () => {
+  unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
+});
       script.onerror = () => {
         console.error("❌ Failed to load Solana Web3");
       };
