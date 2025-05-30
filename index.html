@@ -105,49 +105,38 @@
             };
 
             // ✅ Define BuyLivesJS after Unity and Solana Web3 are ready
-   window.BuyLivesJS = async function (receiver, lamports) {
-  if (!window.solana) {
-    console.error('Phantom Wallet not found');
-    unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Phantom Wallet not found');
-    return;
-  }
-
-  window.solana.on("disconnect", () => {
-    console.warn("👋 Wallet disconnected");
-  });
-
-  if (!window.solana.isConnected) {
-    try {
-      await window.solana.connect();
-    } catch (err) {
-      console.error('Connection to wallet failed');
-      unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', 'Wallet connection rejected');
-      return;
-    }
-  }
-
-  const connection = new solanaWeb3.Connection(
-    "https://mainnet.helius-rpc.com/?api-key=cc83dfe3-b6e9-483b-b852-b790275d8b73",
-    'finalized'
-  );
-
-  const transaction = new solanaWeb3.Transaction().add(
-    solanaWeb3.SystemProgram.transfer({
-      fromPubkey: window.solana.publicKey,
-      toPubkey: new solanaWeb3.PublicKey(receiver),
-      lamports: parseInt(lamports)
-    })
-  );
-
-  transaction.feePayer = window.solana.publicKey;
-
+     window.BuyLivesJS = async function (receiver, lamports) {
   try {
-    const { blockhash } = await connection.getRecentBlockhash();
+    if (!window.solana || !window.solana.isPhantom) {
+      throw new Error('Phantom wallet not found');
+    }
+
+    // Force wallet connection if not already connected
+    if (!window.solana.isConnected) {
+      await window.solana.connect();
+    }
+
+    const connection = new solanaWeb3.Connection(
+      solanaWeb3.clusterApiUrl('devnet'),
+      'confirmed'
+    );
+
+    const transaction = new solanaWeb3.Transaction().add(
+      solanaWeb3.SystemProgram.transfer({
+        fromPubkey: window.solana.publicKey,
+        toPubkey: new solanaWeb3.PublicKey(receiver),
+        lamports: parseInt(lamports)
+      })
+    );
+
+    transaction.feePayer = window.solana.publicKey;
+    const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    const signed = await window.solana.signTransaction(transaction);
-    const signature = await connection.sendRawTransaction(signed.serialize());
-    console.log("💸 Signature:", signature);
+
+    // ✅ Works on mobile + desktop
+    const signature = await window.solana.signAndSendTransaction(transaction);
     await connection.confirmTransaction(signature, 'confirmed');
+
     console.log('✅ Transaction confirmed');
     unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
   } catch (err) {
