@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en-us">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>DashyPenguine</title>
-  <link rel="shortcut icon" href="TemplateData/favicon - Copy.png">
-  <link rel="stylesheet" href="TemplateData/style.css">
+  <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
+  <link rel="stylesheet" href="TemplateData/style.css" />
 
   <script>
-    // ✅ Load Solana Web3 Safely
+    // ✅ Load Solana Web3 safely
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
       script.src = "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
@@ -23,12 +23,18 @@
       document.head.appendChild(script);
     }
 
-    // ✅ Check if browser is Phantom
+    // ✅ Check if mobile
+    function isMobileDevice() {
+      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    // ✅ Check if inside Phantom Browser (basic check)
     function isPhantomBrowser() {
       return /Phantom/i.test(navigator.userAgent);
     }
   </script>
 </head>
+
 <body>
   <div id="unity-container" class="unity-desktop">
     <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
@@ -47,21 +53,39 @@
   </div>
 
   <script>
-    window.addEventListener('load', function () {
+    window.addEventListener("load", function () {
+      // ✅ Step 1: Redirect Mobile to Phantom App (before loading game)
+      if (isMobileDevice() && !isPhantomBrowser()) {
+        const appUrl = encodeURIComponent("https://ehtesham2397.github.io/DashyPenguineBuild/");
+        const phantomDeepLink = `https://phantom.app/ul/browse/${appUrl}`;
+        const fallbackUrl = "https://phantom.app/download";
+
+        // Try to open the Phantom app
+        window.location.href = phantomDeepLink;
+
+        // Fallback to Phantom download page after 3 seconds
+        setTimeout(() => {
+          window.location.href = fallbackUrl;
+        }, 3000);
+
+        return; // Stop further execution
+      }
+
+      // ✅ Step 2: Load Game (Only on Desktop or Phantom browser)
       loadSolanaWeb3(() => {
-        var canvas = document.querySelector("#unity-canvas");
+        const canvas = document.querySelector("#unity-canvas");
 
         function unityShowBanner(msg, type) {
-          var warningBanner = document.querySelector("#unity-warning");
+          const warningBanner = document.querySelector("#unity-warning");
           function updateBannerVisibility() {
-            warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+            warningBanner.style.display = warningBanner.children.length ? "block" : "none";
           }
-          var div = document.createElement('div');
+          const div = document.createElement("div");
           div.innerHTML = msg;
           warningBanner.appendChild(div);
-          if (type == 'error') div.style = 'background: red; padding: 10px;';
-          else {
-            if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          if (type === "error") div.style = "background: red; padding: 10px;";
+          else if (type === "warning") {
+            div.style = "background: yellow; padding: 10px;";
             setTimeout(() => {
               warningBanner.removeChild(div);
               updateBannerVisibility();
@@ -70,9 +94,9 @@
           updateBannerVisibility();
         }
 
-        var buildUrl = "Build";
-        var loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
-        var config = {
+        const buildUrl = "Build";
+        const loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
+        const config = {
           arguments: [],
           dataUrl: buildUrl + "/LocalFlappyBirdBuild.data",
           frameworkUrl: buildUrl + "/LocalFlappyBirdBuild.framework.js",
@@ -84,11 +108,11 @@
           showBanner: unityShowBanner,
         };
 
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          var meta = document.createElement('meta');
-          meta.name = 'viewport';
-          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-          document.getElementsByTagName('head')[0].appendChild(meta);
+        if (isMobileDevice()) {
+          const meta = document.createElement("meta");
+          meta.name = "viewport";
+          meta.content = "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
+          document.getElementsByTagName("head")[0].appendChild(meta);
           document.querySelector("#unity-container").className = "unity-mobile";
           canvas.className = "unity-mobile";
         } else {
@@ -96,79 +120,43 @@
           canvas.style.height = "600px";
         }
 
-        // ✅ Mobile deep link redirection if not in Phantom
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobile && !isPhantomBrowser()) {
-		
-		const appUrl = encodeURIComponent("https://ehtesham2397.github.io/DashyPenguineBuild/");
-const deepLink = `phantom://browse/${appUrl}`;
-const fallbackUrl = "https://phantom.app/download";
-
-window.location.href = deepLink;
-setTimeout(() => {
-  window.location.href = fallbackUrl;
-}, 3000);
-		
-          
-        }
-
         document.querySelector("#unity-loading-bar").style.display = "block";
 
-        var script = document.createElement("script");
+        const script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = () => {
           createUnityInstance(canvas, config, (progress) => {
             document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-          }).then(async (unityInstance) => {
+          }).then((unityInstance) => {
             document.querySelector("#unity-loading-bar").style.display = "none";
             document.querySelector("#unity-fullscreen-button").onclick = () => {
               unityInstance.SetFullscreen(1);
             };
 
-            // ✅ Wallet connect logic
-            async function connectWallet() {
-              if (window.solana && window.solana.isPhantom) {
-                try {
-                  const response = await window.solana.connect();
-                  unityInstance.SendMessage('BuyLivesButton', 'OnWalletConnected', response.publicKey.toString());
-                } catch (error) {
-                  console.error("Error connecting wallet:", error);
-                  unityInstance.SendMessage('BuyLivesButton', 'OnPhantomError', "Failed to connect to Phantom Wallet.");
-                }
-              } else {
-                unityInstance.SendMessage('BuyLivesButton', 'OnPhantomError', "Phantom Wallet is not installed!");
-              }
-            }
-
-            await connectWallet();
-
             if (window.solana) {
-              window.solana.on('disconnect', () => {
-                unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
+              window.solana.on("disconnect", () => {
+                unityInstance.SendMessage("BuyLivesButton", "OnWalletDisconnected");
               });
             }
 
-            // ✅ Send lamports to receiver
+            // ✅ Define BuyLivesJS for Unity to call
             window.BuyLivesJS = async function (receiver, lamports) {
               try {
                 if (!window.solana || !window.solana.isPhantom) {
-                  throw new Error('Phantom wallet not found');
+                  throw new Error("Phantom wallet not found");
                 }
 
                 if (!window.solana.isConnected) {
                   await window.solana.connect();
                 }
 
-                const connection = new solanaWeb3.Connection(
-                  solanaWeb3.clusterApiUrl('devnet'),
-                  'confirmed'
-                );
+                const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("devnet"), "confirmed");
 
                 const transaction = new solanaWeb3.Transaction().add(
                   solanaWeb3.SystemProgram.transfer({
                     fromPubkey: window.solana.publicKey,
                     toPubkey: new solanaWeb3.PublicKey(receiver),
-                    lamports: parseInt(lamports)
+                    lamports: parseInt(lamports),
                   })
                 );
 
@@ -177,16 +165,15 @@ setTimeout(() => {
                 transaction.recentBlockhash = blockhash;
 
                 const signature = await window.solana.signAndSendTransaction(transaction);
-                await connection.confirmTransaction(signature, 'confirmed');
+                await connection.confirmTransaction(signature, "confirmed");
 
-                console.log('✅ Transaction confirmed');
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
+                console.log("✅ Transaction confirmed");
+                unityInstance.SendMessage("BuyLivesButton", "OnPaymentSuccess");
               } catch (err) {
-                console.error('❌ Transaction failed:', err);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
+                console.error("❌ Transaction failed:", err);
+                unityInstance.SendMessage("BuyLivesButton", "OnPaymentFailed", err.message);
               }
             };
-
           }).catch((message) => {
             alert(message);
           });
