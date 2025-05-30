@@ -17,11 +17,15 @@
         console.log("✅ Solana Web3 Loaded");
         callback();
       };
-
       script.onerror = () => {
         console.error("❌ Failed to load Solana Web3");
       };
       document.head.appendChild(script);
+    }
+
+    // ✅ Check if browser is Phantom
+    function isPhantomBrowser() {
+      return /Phantom/i.test(navigator.userAgent);
     }
   </script>
 </head>
@@ -92,74 +96,90 @@
           canvas.style.height = "600px";
         }
 
+        // ✅ Mobile deep link redirection if not in Phantom
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile && !isPhantomBrowser()) {
+          const appUrl = encodeURIComponent("https://ehtesham2397.github.io/DashyPenguineBuild/");
+          const refUrl = encodeURIComponent("https://example.com");
+          const phantomDeeplink = `https://phantom.app/ul/browse/${appUrl}?ref=${refUrl}`;
+          window.location.href = phantomDeeplink;
+          return;
+        }
+
         document.querySelector("#unity-loading-bar").style.display = "block";
 
         var script = document.createElement("script");
         script.src = loaderUrl;
         script.onload = () => {
           createUnityInstance(canvas, config, (progress) => {
-  document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-}).then((unityInstance) => {
-  document.querySelector("#unity-loading-bar").style.display = "none";
-  document.querySelector("#unity-fullscreen-button").onclick = () => {
-    unityInstance.SetFullscreen(1);
-  };
+            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+          }).then(async (unityInstance) => {
+            document.querySelector("#unity-loading-bar").style.display = "none";
+            document.querySelector("#unity-fullscreen-button").onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
 
-  if (window.solana) {
-    window.solana.on('disconnect', () => {
-      unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
-    });
-  }
+            // ✅ Wallet connect logic
+            async function connectWallet() {
+              if (window.solana && window.solana.isPhantom) {
+                try {
+                  const response = await window.solana.connect();
+                  unityInstance.SendMessage('BuyLivesButton', 'OnWalletConnected', response.publicKey.toString());
+                } catch (error) {
+                  console.error("Error connecting wallet:", error);
+                  unityInstance.SendMessage('BuyLivesButton', 'OnPhantomError', "Failed to connect to Phantom Wallet.");
+                }
+              } else {
+                unityInstance.SendMessage('BuyLivesButton', 'OnPhantomError', "Phantom Wallet is not installed!");
+              }
+            }
 
-            // ✅ Define BuyLivesJS after Unity and Solana Web3 are ready
-     window.BuyLivesJS = async function (receiver, lamports) {
-  try {
-    if (!window.solana || !window.solana.isPhantom) {
-      throw new Error('Phantom wallet not found');
-    }
-if (window.solana && window.solana.isPhantom) {
-  window.solana.connect({ onlyIfTrusted: true })
-    .then(() => {
-      console.log("✅ Reconnected to wallet");
-    })
-    .catch(() => {
-      console.warn("❌ Not connected (user not trusted)");
-    });
-}
-    // Force wallet connection if not already connected
-    if (!window.solana.isConnected) {
-      await window.solana.connect();
-    }
+            await connectWallet();
 
-    const connection = new solanaWeb3.Connection(
-      solanaWeb3.clusterApiUrl('devnet'),
-      'confirmed'
-    );
+            if (window.solana) {
+              window.solana.on('disconnect', () => {
+                unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
+              });
+            }
 
-    const transaction = new solanaWeb3.Transaction().add(
-      solanaWeb3.SystemProgram.transfer({
-        fromPubkey: window.solana.publicKey,
-        toPubkey: new solanaWeb3.PublicKey(receiver),
-        lamports: parseInt(lamports)
-      })
-    );
+            // ✅ Send lamports to receiver
+            window.BuyLivesJS = async function (receiver, lamports) {
+              try {
+                if (!window.solana || !window.solana.isPhantom) {
+                  throw new Error('Phantom wallet not found');
+                }
 
-    transaction.feePayer = window.solana.publicKey;
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
+                if (!window.solana.isConnected) {
+                  await window.solana.connect();
+                }
 
-    // ✅ Works on mobile + desktop
-    const signature = await window.solana.signAndSendTransaction(transaction);
-    await connection.confirmTransaction(signature, 'confirmed');
+                const connection = new solanaWeb3.Connection(
+                  solanaWeb3.clusterApiUrl('devnet'),
+                  'confirmed'
+                );
 
-    console.log('✅ Transaction confirmed');
-    unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
-  } catch (err) {
-    console.error('❌ Transaction failed:', err);
-    unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
-  }
-};
+                const transaction = new solanaWeb3.Transaction().add(
+                  solanaWeb3.SystemProgram.transfer({
+                    fromPubkey: window.solana.publicKey,
+                    toPubkey: new solanaWeb3.PublicKey(receiver),
+                    lamports: parseInt(lamports)
+                  })
+                );
 
+                transaction.feePayer = window.solana.publicKey;
+                const { blockhash } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+
+                const signature = await window.solana.signAndSendTransaction(transaction);
+                await connection.confirmTransaction(signature, 'confirmed');
+
+                console.log('✅ Transaction confirmed');
+                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
+              } catch (err) {
+                console.error('❌ Transaction failed:', err);
+                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
+              }
+            };
 
           }).catch((message) => {
             alert(message);
