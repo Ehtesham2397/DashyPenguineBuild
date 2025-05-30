@@ -17,9 +17,7 @@
         console.log("✅ Solana Web3 Loaded");
         callback();
       };
-	  window.solana.on('disconnect', () => {
-  unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
-});
+
       script.onerror = () => {
         console.error("❌ Failed to load Solana Web3");
       };
@@ -100,12 +98,18 @@
         script.src = loaderUrl;
         script.onload = () => {
           createUnityInstance(canvas, config, (progress) => {
-            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-          }).then((unityInstance) => {
-            document.querySelector("#unity-loading-bar").style.display = "none";
-            document.querySelector("#unity-fullscreen-button").onclick = () => {
-              unityInstance.SetFullscreen(1);
-            };
+  document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+}).then((unityInstance) => {
+  document.querySelector("#unity-loading-bar").style.display = "none";
+  document.querySelector("#unity-fullscreen-button").onclick = () => {
+    unityInstance.SetFullscreen(1);
+  };
+
+  if (window.solana) {
+    window.solana.on('disconnect', () => {
+      unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
+    });
+  }
 
             // ✅ Define BuyLivesJS after Unity and Solana Web3 are ready
      window.BuyLivesJS = async function (receiver, lamports) {
