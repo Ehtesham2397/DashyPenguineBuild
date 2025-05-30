@@ -99,11 +99,17 @@
         // ✅ Mobile deep link redirection if not in Phantom
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isMobile && !isPhantomBrowser()) {
-          const appUrl = encodeURIComponent("https://ehtesham2397.github.io/DashyPenguineBuild/");
-          const refUrl = encodeURIComponent("https://example.com");
-          const phantomDeeplink = `https://phantom.app/ul/browse/${appUrl}?ref=${refUrl}`;
-          window.location.href = phantomDeeplink;
-          return;
+		
+		const appUrl = encodeURIComponent("https://ehtesham2397.github.io/DashyPenguineBuild/");
+const deepLink = `phantom://browse/${appUrl}`;
+const fallbackUrl = "https://phantom.app/download";
+
+window.location.href = deepLink;
+setTimeout(() => {
+  window.location.href = fallbackUrl;
+}, 3000);
+		
+          
         }
 
         document.querySelector("#unity-loading-bar").style.display = "block";
