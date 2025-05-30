@@ -117,7 +117,15 @@
     if (!window.solana || !window.solana.isPhantom) {
       throw new Error('Phantom wallet not found');
     }
-
+if (window.solana && window.solana.isPhantom) {
+  window.solana.connect({ onlyIfTrusted: true })
+    .then(() => {
+      console.log("✅ Reconnected to wallet");
+    })
+    .catch(() => {
+      console.warn("❌ Not connected (user not trusted)");
+    });
+}
     // Force wallet connection if not already connected
     if (!window.solana.isConnected) {
       await window.solana.connect();
