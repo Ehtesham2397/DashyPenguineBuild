@@ -28,24 +28,17 @@
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     }
 
-    // Encode URL for Phantom deeplink
+    // Encode URL for Phantom deeplink - FIXED VERSION
     function getPhantomDeeplink(appUrl, refUrl) {
-	
-      //return `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(refUrl)}`;
-      return 'https://phantom.app/ul/browse/${appUrl}?ref=${refUrl}';
-	 // return `https://phantom.app/ul/v1/browse?url=${encodeURIComponent(appUrl)}`;
-	 //return 'https://phantom.app/ul/v1/browse?url=https%3A%2F%2Fdashypenguin.io';
-	 //return 'https://phantom.app/ul/v1/browse?url=https%3A%2F%2Fdashypenguin.io&ref=https%3A%2F%2Fexample.com';
-	 //return 'https://phantom.app/ul/browse/https%3A%2F%2Fdashypenguin.io?ref=https%3A%2F%2Fexample.com';
-	 //return 'https://phantom.app/ul/?url=https%3A%2F%2Fdashypenguin.io';
-
-
-	  
+      // Use backticks for template literals, not single quotes
+      return `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(refUrl)}`;
     }
 
-    // Check if in Phantom browser (basic check)
+    // Check if in Phantom browser (enhanced check)
     function isPhantomBrowser() {
-      return window.solana && window.solana.isPhantom;
+      // Check for both window.solana and user agent
+      return (window.solana && window.solana.isPhantom) || 
+             navigator.userAgent.toLowerCase().includes('phantom');
     }
   </script>
 </head>
@@ -69,18 +62,34 @@
 
   <script>
     window.addEventListener('load', function () {
-      const gameUrl = "https://dashypenguin.io/";
-      const phantomRefUrl = "https://example.com"; // Change to your referrer URL if needed
+      // Use your actual domain instead of dashypenguin.io if it's not working
+      const gameUrl = "https://ehtesham2397.github.io/DashyPenguineBuild/";
+      const phantomRefUrl = "https://ehtesham2397.github.io"; // Use your GitHub pages domain as referrer
+
+      console.log("🔍 Checking device and browser...");
+      console.log("Is mobile:", isMobileDevice());
+      console.log("Is Phantom browser:", isPhantomBrowser());
+      console.log("User agent:", navigator.userAgent);
 
       if (isMobileDevice() && !isPhantomBrowser()) {
         // If mobile and NOT Phantom browser, redirect to Phantom deeplink
         const deeplink = getPhantomDeeplink(gameUrl, phantomRefUrl);
-        console.log("Redirecting to Phantom deeplink:", deeplink);
+        console.log("🚀 Redirecting to Phantom deeplink:", deeplink);
+
+        // Show a message to user before redirect
+        document.body.innerHTML = `
+          <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+            <h2>Opening in Phantom Wallet...</h2>
+            <p>Redirecting you to Phantom browser to play DashyPenguin</p>
+            <p style="font-size: 12px; color: #666;">If the redirect doesn't work, please open Phantom app manually and navigate to:<br>
+            <code>${gameUrl}</code></p>
+          </div>
+        `;
 
         // Redirect after small delay to allow page to settle
         setTimeout(() => {
           window.location.href = deeplink;
-        }, 500);
+        }, 1000);
 
         return; // Stop further execution
       }
