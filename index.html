@@ -6,8 +6,16 @@
   <title>DashyPenguin</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
   <link rel="stylesheet" href="TemplateData/style.css" />
+<button onclick="openPhantom()">Open in Phantom</button>
 
+<script>
+  function openPhantom() {
+    const url = 'https://phantom.app/ul/v1/browse?url=' + encodeURIComponent('https://dashypenguin.io');
+    window.open(url, '_blank');
+  }
+</script>
   <script>
+  
     // Load Solana Web3 safely
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
