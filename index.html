@@ -7,7 +7,6 @@
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
   <link rel="stylesheet" href="TemplateData/style.css" />
   <script>
-  
     // Load Solana Web3 safely
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
@@ -24,30 +23,17 @@
       document.head.appendChild(script);
     }
 
-    // Check if user agent is mobile
-    function isMobileDevice() {
-      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
-
-    // Check if in Phantom browser (enhanced check)
-    function isPhantomBrowser() {
-      // Check for both window.solana and user agent
-      return (window.solana && window.solana.isPhantom) || 
-             navigator.userAgent.toLowerCase().includes('phantom');
-    }
-
-    // Redirect to Phantom browser with the current game URL
-    function redirectToPhantom() {
+    // Redirect to Phantom browser with enhanced UI (kept in HTML for DOM manipulation)
+    window.redirectToPhantom = function() {
       const gameUrl = window.location.href;
       const encodedUrl = encodeURIComponent(gameUrl);
       const encodedRef = encodeURIComponent(window.location.origin);
       
-      // Official Phantom deeplink format
       const phantomDeeplink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
       
       console.log("🔄 Redirecting to Phantom:", phantomDeeplink);
       
-      // Create a more user-friendly redirect overlay
+      // Create redirect overlay
       document.body.innerHTML = `
         <div style="
           position: fixed;
@@ -110,53 +96,7 @@
       setTimeout(() => {
         window.location.href = phantomDeeplink;
       }, 1500);
-    }
-
-    // This function will be called from Unity when user clicks wallet button
-    window.ConnectPhantomWallet = function() {
-      console.log("🎯 Unity requested Phantom wallet connection");
-      
-      if (isMobileDevice() && !isPhantomBrowser()) {
-        // On mobile and not in Phantom browser - redirect to Phantom
-        redirectToPhantom();
-        return;
-      }
-      
-      // We're either on desktop or already in Phantom browser - proceed normally
-      connectWalletDirectly();
     };
-
-    // Direct wallet connection (for desktop or when already in Phantom)
-    async function connectWalletDirectly() {
-      try {
-        if (!window.solana || !window.solana.isPhantom) {
-          throw new Error('Phantom wallet not found. Please install Phantom wallet.');
-        }
-
-        // Try to connect if trusted, otherwise require user interaction
-        try {
-          await window.solana.connect({ onlyIfTrusted: true });
-        } catch (err) {
-          // If not trusted, require explicit user connection
-          await window.solana.connect();
-        }
-
-        console.log('✅ Wallet connected:', window.solana.publicKey.toString());
-        
-        // Notify Unity that wallet is connected
-        if (window.unityInstance) {
-          window.unityInstance.SendMessage('BuyLivesButton', 'OnWalletConnected', window.solana.publicKey.toString());
-        }
-        
-      } catch (err) {
-        console.error('❌ Wallet connection failed:', err);
-        
-        // Notify Unity of connection failure
-        if (window.unityInstance) {
-          window.unityInstance.SendMessage('BuyLivesButton', 'OnWalletConnectionFailed', err.message);
-        }
-      }
-    }
   </script>
 </head>
 
@@ -179,12 +119,6 @@
 
   <script>
     window.addEventListener('load', function () {
-      console.log("🔍 Device and browser info:");
-      console.log("Is mobile:", isMobileDevice());
-      console.log("Is Phantom browser:", isPhantomBrowser());
-      console.log("User agent:", navigator.userAgent);
-
-      // Always load the game first, regardless of device/browser
       loadSolanaWeb3(() => {
         var canvas = document.querySelector("#unity-canvas");
 
@@ -241,60 +175,13 @@
           createUnityInstance(canvas, config, (progress) => {
             document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
           }).then((unityInstance) => {
-            // Store Unity instance globally so other functions can access it
+            // Store Unity instance globally
             window.unityInstance = unityInstance;
+            window.walletUnityInstance = unityInstance; // For jslib access
             
             document.querySelector("#unity-loading-bar").style.display = "none";
             document.querySelector("#unity-fullscreen-button").onclick = () => {
               unityInstance.SetFullscreen(1);
-            };
-
-            // Set up wallet disconnect listener
-            if (window.solana) {
-              window.solana.on('disconnect', () => {
-                unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
-              });
-            }
-
-            // Transaction function (same as before, but with better error handling)
-            window.BuyLivesJS = async function (receiver, lamports) {
-              try {
-                if (!window.solana || !window.solana.isPhantom) {
-                  throw new Error('Phantom wallet not found');
-                }
-
-                // Ensure wallet is connected
-                if (!window.solana.isConnected) {
-                  await window.solana.connect();
-                }
-
-                const connection = new solanaWeb3.Connection(
-                  solanaWeb3.clusterApiUrl('devnet'),
-                  'confirmed'
-                );
-
-                const transaction = new solanaWeb3.Transaction().add(
-                  solanaWeb3.SystemProgram.transfer({
-                    fromPubkey: window.solana.publicKey,
-                    toPubkey: new solanaWeb3.PublicKey(receiver),
-                    lamports: parseInt(lamports)
-                  })
-                );
-
-                transaction.feePayer = window.solana.publicKey;
-                const { blockhash } = await connection.getLatestBlockhash();
-                transaction.recentBlockhash = blockhash;
-
-                const signature = await window.solana.signAndSendTransaction(transaction);
-                await connection.confirmTransaction(signature, 'confirmed');
-
-                console.log('✅ Transaction confirmed:', signature);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
-                
-              } catch (err) {
-                console.error('❌ Transaction failed:', err);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
-              }
             };
 
             console.log("✅ Game loaded successfully");
