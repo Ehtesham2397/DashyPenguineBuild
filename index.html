@@ -6,9 +6,100 @@
   <title>DashyPenguin</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
   <link rel="stylesheet" href="TemplateData/style.css" />
+
   <script>
-  
-    // Load Solana Web3 safely
+    const gameUrl = "https://ehtesham2397.github.io/DashyPenguineBuild/";
+
+    function isMobileDevice() {
+      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    function isPhantomBrowser() {
+      return (window.solana && window.solana.isPhantom) || 
+             navigator.userAgent.toLowerCase().includes('phantom');
+    }
+
+    function tryPhantomDeeplinks(appUrl) {
+      const encodedUrl = encodeURIComponent(appUrl);
+      const encodedRef = encodeURIComponent(window.location.origin);
+
+      const deeplinks = [
+        `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`,
+        `https://phantom.app/ul/browse?url=${encodedUrl}&ref=${encodedRef}`,
+        `phantom://browse?url=${encodedUrl}&ref=${encodedRef}`,
+        `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`,
+        `https://phantom.app/ul/browse/${encodedUrl}`,
+        `phantom://browse/${encodedUrl}`
+      ];
+
+      let currentIndex = 0;
+      let redirectTimeout;
+
+      function tryNextDeeplink() {
+        if (currentIndex >= deeplinks.length) {
+          showManualFallback(appUrl);
+          return;
+        }
+
+        const currentDeeplink = deeplinks[currentIndex];
+        console.log(`🔄 Trying deeplink ${currentIndex + 1}/${deeplinks.length}:`, currentDeeplink);
+
+        if (redirectTimeout) clearTimeout(redirectTimeout);
+
+        try {
+          window.location.href = currentDeeplink;
+          const link = document.createElement('a');
+          link.href = currentDeeplink;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (error) {
+          console.log(`Deeplink ${currentIndex + 1} failed:`, error);
+        }
+
+        redirectTimeout = setTimeout(() => {
+          currentIndex++;
+          tryNextDeeplink();
+        }, 2500);
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && redirectTimeout) {
+          clearTimeout(redirectTimeout);
+          console.log('✅ Page became hidden - deeplink likely worked!');
+        }
+      });
+
+      tryNextDeeplink();
+    }
+
+    function showManualFallback(appUrl) {
+      document.body.innerHTML = `
+        <div style="text-align: center; padding: 30px; font-family: Arial; max-width: 400px; margin: auto;">
+          <div style="font-size: 48px;">👻</div>
+          <h2>Open in Phantom</h2>
+          <p>You can open Phantom manually:</p>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+            <p><strong>Steps:</strong></p>
+            <ol style="text-align: left;">
+              <li>Open Phantom app</li>
+              <li>Tap the browser icon</li>
+              <li>Enter: <strong>${appUrl}</strong></li>
+            </ol>
+          </div>
+          <button onclick="retryDeeplink()" style="margin-top: 20px; padding: 10px 20px; border: none; background: purple; color: white; border-radius: 20px;">Try Again</button>
+        </div>
+      `;
+      window.retryDeeplink = () => tryPhantomDeeplinks(appUrl);
+    }
+
+    // 🧠 Unity will call this
+    function OpenPhantomFromUnity() {
+      console.log("📲 Unity called OpenPhantomFromUnity()");
+      tryPhantomDeeplinks(gameUrl);
+    }
+
     function loadSolanaWeb3(callback) {
       const script = document.createElement("script");
       script.src = "https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js";
@@ -17,131 +108,8 @@
         console.log("✅ Solana Web3 Loaded");
         callback();
       };
-      script.onerror = () => {
-        console.error("❌ Failed to load Solana Web3");
-      };
+      script.onerror = () => console.error("❌ Failed to load Solana Web3");
       document.head.appendChild(script);
-    }
-
-    // Check if user agent is mobile
-    function isMobileDevice() {
-      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
-
-    // Correct Phantom deeplink formats based on official docs
-    function tryPhantomDeeplinks(appUrl) {
-      const encodedUrl = encodeURIComponent(appUrl);
-      const encodedRef = encodeURIComponent(window.location.origin);
-      
-      // Based on official Phantom documentation
-      const deeplinks = [
-        // Official format: https://phantom.app/ul/browse/{url}?ref={ref}
-        `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`,
-        // Alternative with query parameters
-        `https://phantom.app/ul/browse?url=${encodedUrl}&ref=${encodedRef}`,
-        // Custom protocol versions
-        `phantom://browse?url=${encodedUrl}&ref=${encodedRef}`,
-        `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`,
-        // Fallback formats
-        `https://phantom.app/ul/browse/${encodedUrl}`,
-        `phantom://browse/${encodedUrl}`
-      ];
-      
-      let currentIndex = 0;
-      let redirectTimeout;
-      
-      function tryNextDeeplink() {
-        if (currentIndex >= deeplinks.length) {
-          // All failed, show manual fallback
-          showManualFallback(appUrl);
-          return;
-        }
-        
-        const currentDeeplink = deeplinks[currentIndex];
-        console.log(`🔄 Trying deeplink ${currentIndex + 1}/${deeplinks.length}:`, currentDeeplink);
-        
-        // Clear any existing timeout
-        if (redirectTimeout) {
-          clearTimeout(redirectTimeout);
-        }
-        
-        // Try to open the deeplink
-        try {
-          // Method 1: Direct window location
-          window.location.href = currentDeeplink;
-          
-          // Method 2: Create invisible link and click it
-          const link = document.createElement('a');
-          link.href = currentDeeplink;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-        } catch (error) {
-          console.log(`Deeplink ${currentIndex + 1} failed:`, error);
-        }
-        
-        // If we're still here after 2.5 seconds, try the next one
-        redirectTimeout = setTimeout(() => {
-          currentIndex++;
-          tryNextDeeplink();
-        }, 2500);
-      }
-      
-      // Add page visibility change listener to detect if user left (deeplink worked)
-      const handleVisibilityChange = () => {
-        if (document.hidden) {
-          console.log('✅ Page became hidden - deeplink likely worked!');
-          if (redirectTimeout) {
-            clearTimeout(redirectTimeout);
-          }
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Start trying deeplinks
-      tryNextDeeplink();
-    }
-    
-    function showManualFallback(appUrl) {
-      document.body.innerHTML = `
-        <div style="text-align: center; padding: 30px; font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto;">
-          <div style="font-size: 48px; margin-bottom: 20px;">👻</div>
-          <h2 style="color: #333; margin-bottom: 15px;">Open in Phantom</h2>
-          <p style="color: #666; margin-bottom: 25px;">We'll redirect you automatically, or you can open Phantom manually:</p>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-            <p style="margin: 0; font-weight: bold; color: #333;">Manual Steps:</p>
-            <ol style="text-align: left; color: #555; margin: 10px 0;">
-              <li>Open Phantom app</li>
-              <li>Tap browser/globe icon</li>
-              <li>Enter: <strong>${appUrl}</strong></li>
-            </ol>
-          </div>
-          
-          <button onclick="retryDeeplink()" style="
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            border: none; 
-            padding: 12px 30px; 
-            border-radius: 25px; 
-            font-size: 16px; 
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-          ">Try Again</button>
-        </div>
-      `;
-      
-      window.retryDeeplink = () => tryPhantomDeeplinks(appUrl);
-    }
-
-    // Check if in Phantom browser (enhanced check)
-    function isPhantomBrowser() {
-      // Check for both window.solana and user agent
-      return (window.solana && window.solana.isPhantom) || 
-             navigator.userAgent.toLowerCase().includes('phantom');
     }
   </script>
 </head>
@@ -165,119 +133,8 @@
 
   <script>
     window.addEventListener('load', function () {
-      // Use your actual domain instead of dashypenguin.io if it's not working
-      const gameUrl = "https://ehtesham2397.github.io/DashyPenguineBuild/";
-      const phantomRefUrl = "https://ehtesham2397.github.io"; // Use your GitHub pages domain as referrer
-
-      console.log("🔍 Checking device and browser...");
-      console.log("Is mobile:", isMobileDevice());
-      console.log("Is Phantom browser:", isPhantomBrowser());
-      console.log("User agent:", navigator.userAgent);
-
-      if (isMobileDevice() && !isPhantomBrowser()) {
-        // Create an interactive deeplink button (required for Phantom to work)
-        const encodedUrl = encodeURIComponent(gameUrl);
-        const encodedRef = encodeURIComponent(window.location.origin);
-        const phantomDeeplink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
-        
-        document.body.innerHTML = `
-          <div style="
-            text-align: center; 
-            padding: 30px; 
-            font-family: Arial, sans-serif; 
-            max-width: 400px; 
-            margin: 0 auto;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-          ">
-            <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; backdrop-filter: blur(10px);">
-              <div style="font-size: 64px; margin-bottom: 20px;">👻</div>
-              <h1 style="margin-bottom: 15px; font-size: 24px;">DashyPenguin</h1>
-              <p style="margin-bottom: 30px; opacity: 0.9; font-size: 16px;">
-                Click below to open the game in Phantom's secure browser
-              </p>
-              
-              <a href="${phantomDeeplink}" style="
-                display: inline-block;
-                background: rgba(255,255,255,0.9);
-                color: #333;
-                text-decoration: none;
-                padding: 16px 32px;
-                border-radius: 50px;
-                font-weight: bold;
-                font-size: 18px;
-                margin: 10px 0;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-                transition: all 0.3s ease;
-              " onclick="trackClick()">
-                🚀 Open in Phantom
-              </a>
-              
-              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-                <p style="font-size: 14px; opacity: 0.8; margin-bottom: 15px;">
-                  Don't have Phantom installed?
-                </p>
-                <a href="https://phantom.app/download" target="_blank" style="
-                  color: rgba(255,255,255,0.8);
-                  text-decoration: underline;
-                  font-size: 14px;
-                ">Download Phantom Wallet</a>
-              </div>
-            </div>
-          </div>
-          
-          <style>
-            body { margin: 0; padding: 0; }
-            a:hover {
-              transform: translateY(-2px);
-              box-shadow: 0 12px 35px rgba(0,0,0,0.3) !important;
-            }
-          </style>
-        `;
-
-        // Add click tracking
-        window.trackClick = function() {
-          console.log('🎯 User clicked Phantom deeplink:', phantomDeeplink);
-          
-          // Show feedback
-          setTimeout(() => {
-            const link = document.querySelector('a[href*="phantom.app"]');
-            if (link) {
-              link.innerHTML = '⏳ Opening Phantom...';
-              link.style.background = 'rgba(255,255,255,0.7)';
-            }
-          }, 100);
-        };
-
-        return; // Stop further execution
-      }
-
-      // Now load Unity and Solana web3 normally (desktop or Phantom browser)
       loadSolanaWeb3(() => {
         var canvas = document.querySelector("#unity-canvas");
-
-        function unityShowBanner(msg, type) {
-          var warningBanner = document.querySelector("#unity-warning");
-          function updateBannerVisibility() {
-            warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-          }
-          var div = document.createElement('div');
-          div.innerHTML = msg;
-          warningBanner.appendChild(div);
-          if (type == 'error') div.style = 'background: red; padding: 10px;';
-          else {
-            if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-            setTimeout(() => {
-              warningBanner.removeChild(div);
-              updateBannerVisibility();
-            }, 5000);
-          }
-          updateBannerVisibility();
-        }
 
         var buildUrl = "Build";
         var loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
@@ -290,13 +147,20 @@
           companyName: "GameBoom",
           productName: "DashyPenguine",
           productVersion: "0.1",
-          showBanner: unityShowBanner,
+          showBanner: function(msg, type) {
+            var warningBanner = document.querySelector("#unity-warning");
+            var div = document.createElement('div');
+            div.innerHTML = msg;
+            warningBanner.appendChild(div);
+            div.style = `background: ${type === 'error' ? 'red' : 'yellow'}; padding: 10px;`;
+            if (type !== 'error') setTimeout(() => warningBanner.removeChild(div), 5000);
+          }
         };
 
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
           var meta = document.createElement('meta');
           meta.name = 'viewport';
-          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no';
           document.getElementsByTagName('head')[0].appendChild(meta);
           document.querySelector("#unity-container").className = "unity-mobile";
           canvas.className = "unity-mobile";
@@ -326,25 +190,11 @@
 
             window.BuyLivesJS = async function (receiver, lamports) {
               try {
-                if (!window.solana || !window.solana.isPhantom) {
-                  throw new Error('Phantom wallet not found');
-                }
+                if (!window.solana?.isPhantom) throw new Error('Phantom wallet not found');
+                await window.solana.connect({ onlyIfTrusted: true }).catch(() => {});
+                if (!window.solana.isConnected) await window.solana.connect();
 
-                if (window.solana && window.solana.isPhantom) {
-                  await window.solana.connect({ onlyIfTrusted: true }).catch(() => {
-                    console.warn("❌ Not connected (user not trusted)");
-                  });
-                }
-
-                if (!window.solana.isConnected) {
-                  await window.solana.connect();
-                }
-
-                const connection = new solanaWeb3.Connection(
-                  solanaWeb3.clusterApiUrl('devnet'),
-                  'confirmed'
-                );
-
+                const connection = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl('devnet'), 'confirmed');
                 const transaction = new solanaWeb3.Transaction().add(
                   solanaWeb3.SystemProgram.transfer({
                     fromPubkey: window.solana.publicKey,
@@ -352,12 +202,10 @@
                     lamports: parseInt(lamports)
                   })
                 );
-
                 transaction.feePayer = window.solana.publicKey;
                 const { blockhash } = await connection.getLatestBlockhash();
                 transaction.recentBlockhash = blockhash;
 
-                // Works on mobile + desktop
                 const signature = await window.solana.signAndSendTransaction(transaction);
                 await connection.confirmTransaction(signature, 'confirmed');
 
@@ -368,10 +216,7 @@
                 unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
               }
             };
-
-          }).catch((message) => {
-            alert(message);
-          });
+          }).catch(alert);
         };
         document.body.appendChild(script);
       });
