@@ -6,14 +6,6 @@
   <title>DashyPenguin</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
   <link rel="stylesheet" href="TemplateData/style.css" />
-<button onclick="openPhantom()">Open in Phantom</button>
-
-<script>
-  function openPhantom() {
-    const url = 'https://phantom.app/ul/v1/browse?url=' + encodeURIComponent('https://dashypenguin.io');
-    window.open(url, '_blank');
-  }
-</script>
   <script>
   
     // Load Solana Web3 safely
@@ -38,12 +30,14 @@
 
     // Encode URL for Phantom deeplink
     function getPhantomDeeplink(appUrl, refUrl) {
+	
       //return `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(refUrl)}`;
+      return 'https://phantom.app/ul/browse/${appUrl}?ref=${refUrl}';
 	 // return `https://phantom.app/ul/v1/browse?url=${encodeURIComponent(appUrl)}`;
 	 //return 'https://phantom.app/ul/v1/browse?url=https%3A%2F%2Fdashypenguin.io';
 	 //return 'https://phantom.app/ul/v1/browse?url=https%3A%2F%2Fdashypenguin.io&ref=https%3A%2F%2Fexample.com';
 	 //return 'https://phantom.app/ul/browse/https%3A%2F%2Fdashypenguin.io?ref=https%3A%2F%2Fexample.com';
-	 return 'https://phantom.app/ul/?url=https%3A%2F%2Fdashypenguin.io';
+	 //return 'https://phantom.app/ul/?url=https%3A%2F%2Fdashypenguin.io';
 
 
 	  
