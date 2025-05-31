@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <title>DashyPenguine</title>
+  <title>DashyPenguin</title>
   <link rel="shortcut icon" href="TemplateData/favicon - Copy.png" />
   <link rel="stylesheet" href="TemplateData/style.css" />
 
@@ -30,7 +30,10 @@
 
     // Encode URL for Phantom deeplink
     function getPhantomDeeplink(appUrl, refUrl) {
-      return `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(refUrl)}`;
+      //return `https://phantom.app/ul/browse/${encodeURIComponent(appUrl)}?ref=${encodeURIComponent(refUrl)}`;
+	  return `https://phantom.app/ul/v1/browse?url=${encodeURIComponent(appUrl)}`;
+
+	  
     }
 
     // Check if in Phantom browser (basic check)
@@ -53,13 +56,13 @@
     <div id="unity-footer">
       <div id="unity-logo-title-footer"></div>
       <div id="unity-fullscreen-button"></div>
-      <div id="unity-build-title">DashyPenguine</div>
+      <div id="unity-build-title">DashyPenguin</div>
     </div>
   </div>
 
   <script>
     window.addEventListener('load', function () {
-      const gameUrl = "https://ehtesham2397.github.io/DashyPenguineBuild/";
+      const gameUrl = "https://dashypenguin.io/";
       const phantomRefUrl = "https://example.com"; // Change to your referrer URL if needed
 
       if (isMobileDevice() && !isPhantomBrowser()) {
