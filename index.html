@@ -157,6 +157,46 @@
         }
       }
     }
+
+    // Check if files exist
+    async function checkFileExists(url) {
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        return response.ok;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    // Validate Unity build files
+    async function validateBuildFiles() {
+      const buildUrl = "Build";
+      const requiredFiles = [
+        `${buildUrl}/DashyPenguineBuild.loader.js`,
+        `${buildUrl}/DashyPenguineBuild.data`,
+        `${buildUrl}/DashyPenguineBuild.framework.js`,
+        `${buildUrl}/DashyPenguineBuild.wasm`
+      ];
+
+      const fileChecks = await Promise.all(
+        requiredFiles.map(async (file) => {
+          const exists = await checkFileExists(file);
+          console.log(`${exists ? '✅' : '❌'} ${file}`);
+          return { file, exists };
+        })
+      );
+
+      const missingFiles = fileChecks.filter(check => !check.exists);
+      
+      if (missingFiles.length > 0) {
+        console.error('❌ Missing Unity build files:');
+        missingFiles.forEach(({ file }) => console.error(`   - ${file}`));
+        return false;
+      }
+      
+      console.log('✅ All Unity build files found');
+      return true;
+    }
   </script>
 </head>
 
@@ -177,137 +217,199 @@
     </div>
   </div>
 
+  <!-- Error overlay for missing files -->
+  <div id="error-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; font-family: Arial, sans-serif; z-index: 9999;">
+    <div style="display: flex; justify-content: center; align-items: center; height: 100%; padding: 20px;">
+      <div style="background: #333; padding: 40px; border-radius: 10px; max-width: 500px; text-align: center;">
+        <h2 style="color: #ff6b6b; margin-bottom: 20px;">⚠️ Game Files Missing</h2>
+        <p style="margin-bottom: 20px;">The Unity build files could not be found. Please check:</p>
+        <ul style="text-align: left; margin-bottom: 20px;">
+          <li>Build folder exists in the same directory as index.html</li>
+          <li>All Unity build files are present:
+            <ul style="margin-top: 10px;">
+              <li>LocalFlappyBirdBuild.loader.js</li>
+              <li>LocalFlappyBirdBuild.data</li>
+              <li>LocalFlappyBirdBuild.framework.js</li>
+              <li>LocalFlappyBirdBuild.wasm</li>
+            </ul>
+          </li>
+          <li>Files are accessible via HTTP (not file:// protocol)</li>
+        </ul>
+        <button onclick="location.reload()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+          Retry
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.addEventListener('load', function () {
       console.log("🔍 Device and browser info:");
       console.log("Is mobile:", isMobileDevice());
       console.log("Is Phantom browser:", isPhantomBrowser());
       console.log("User agent:", navigator.userAgent);
+      console.log("Current URL:", window.location.href);
 
-      // Always load the game first, regardless of device/browser
-      loadSolanaWeb3(() => {
-        var canvas = document.querySelector("#unity-canvas");
-
-        function unityShowBanner(msg, type) {
-          var warningBanner = document.querySelector("#unity-warning");
-          function updateBannerVisibility() {
-            warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-          }
-          var div = document.createElement('div');
-          div.innerHTML = msg;
-          warningBanner.appendChild(div);
-          if (type == 'error') div.style = 'background: red; padding: 10px;';
-          else {
-            if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-            setTimeout(() => {
-              warningBanner.removeChild(div);
-              updateBannerVisibility();
-            }, 5000);
-          }
-          updateBannerVisibility();
+      // First validate that build files exist
+      validateBuildFiles().then((filesExist) => {
+        if (!filesExist) {
+          document.getElementById('error-overlay').style.display = 'block';
+          return;
         }
 
-        var buildUrl = "Build";
-        var loaderUrl = buildUrl + "/LocalFlappyBirdBuild.loader.js";
-        var config = {
-          arguments: [],
-          dataUrl: buildUrl + "/LocalFlappyBirdBuild.data",
-          frameworkUrl: buildUrl + "/LocalFlappyBirdBuild.framework.js",
-          codeUrl: buildUrl + "/LocalFlappyBirdBuild.wasm",
-          streamingAssetsUrl: "StreamingAssets",
-          companyName: "GameBoom",
-          productName: "DashyPenguine",
-          productVersion: "0.1",
-          showBanner: unityShowBanner,
-        };
+        // Files exist, proceed with loading
+        loadSolanaWeb3(() => {
+          var canvas = document.querySelector("#unity-canvas");
 
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          var meta = document.createElement('meta');
-          meta.name = 'viewport';
-          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-          document.getElementsByTagName('head')[0].appendChild(meta);
-          document.querySelector("#unity-container").className = "unity-mobile";
-          canvas.className = "unity-mobile";
-        } else {
-          canvas.style.width = "960px";
-          canvas.style.height = "600px";
-        }
-
-        document.querySelector("#unity-loading-bar").style.display = "block";
-
-        var script = document.createElement("script");
-        script.src = loaderUrl;
-        script.onload = () => {
-          createUnityInstance(canvas, config, (progress) => {
-            document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-          }).then((unityInstance) => {
-            // Store Unity instance globally so other functions can access it
-            window.unityInstance = unityInstance;
-            
-            document.querySelector("#unity-loading-bar").style.display = "none";
-            document.querySelector("#unity-fullscreen-button").onclick = () => {
-              unityInstance.SetFullscreen(1);
-            };
-
-            // Set up wallet disconnect listener
-            if (window.solana) {
-              window.solana.on('disconnect', () => {
-                unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
-              });
+          function unityShowBanner(msg, type) {
+            var warningBanner = document.querySelector("#unity-warning");
+            function updateBannerVisibility() {
+              warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
             }
+            var div = document.createElement('div');
+            div.innerHTML = msg;
+            warningBanner.appendChild(div);
+            if (type == 'error') div.style = 'background: red; padding: 10px;';
+            else {
+              if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+              setTimeout(() => {
+                warningBanner.removeChild(div);
+                updateBannerVisibility();
+              }, 5000);
+            }
+            updateBannerVisibility();
+          }
 
-            // Transaction function (same as before, but with better error handling)
-            window.BuyLivesJS = async function (receiver, lamports) {
-              try {
-                if (!window.solana || !window.solana.isPhantom) {
-                  throw new Error('Phantom wallet not found');
-                }
+          var buildUrl = "Build";
+          var loaderUrl = buildUrl + "/DashyPenguineBuild.loader.js";
+          var config = {
+            arguments: [],
+            dataUrl: buildUrl + "/DashyPenguineBuild.data",
+            frameworkUrl: buildUrl + "/DashyPenguineBuild.framework.js",
+            codeUrl: buildUrl + "/DashyPenguineBuild.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "GameBoom",
+            productName: "DashyPenguine",
+            productVersion: "0.1",
+            showBanner: unityShowBanner,
+          };
 
-                // Ensure wallet is connected
-                if (!window.solana.isConnected) {
-                  await window.solana.connect();
-                }
+          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+            document.getElementsByTagName('head')[0].appendChild(meta);
+            document.querySelector("#unity-container").className = "unity-mobile";
+            canvas.className = "unity-mobile";
+          } else {
+            canvas.style.width = "960px";
+            canvas.style.height = "600px";
+          }
 
-                const connection = new solanaWeb3.Connection(
-                  solanaWeb3.clusterApiUrl('devnet'),
-                  'confirmed'
-                );
+          document.querySelector("#unity-loading-bar").style.display = "block";
 
-                const transaction = new solanaWeb3.Transaction().add(
-                  solanaWeb3.SystemProgram.transfer({
-                    fromPubkey: window.solana.publicKey,
-                    toPubkey: new solanaWeb3.PublicKey(receiver),
-                    lamports: parseInt(lamports)
-                  })
-                );
+          var script = document.createElement("script");
+          script.src = loaderUrl;
+          script.onload = () => {
+            console.log("✅ Unity loader script loaded");
+            
+            createUnityInstance(canvas, config, (progress) => {
+              document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+              console.log(`Loading progress: ${Math.round(progress * 100)}%`);
+            }).then((unityInstance) => {
+              // Store Unity instance globally so other functions can access it
+              window.unityInstance = unityInstance;
+              
+              document.querySelector("#unity-loading-bar").style.display = "none";
+              document.querySelector("#unity-fullscreen-button").onclick = () => {
+                unityInstance.SetFullscreen(1);
+              };
 
-                transaction.feePayer = window.solana.publicKey;
-                const { blockhash } = await connection.getLatestBlockhash();
-                transaction.recentBlockhash = blockhash;
-
-                const signature = await window.solana.signAndSendTransaction(transaction);
-                await connection.confirmTransaction(signature, 'confirmed');
-
-                console.log('✅ Transaction confirmed:', signature);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
-                
-              } catch (err) {
-                console.error('❌ Transaction failed:', err);
-                unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
+              // Set up wallet disconnect listener
+              if (window.solana) {
+                window.solana.on('disconnect', () => {
+                  unityInstance.SendMessage('BuyLivesButton', 'OnWalletDisconnected');
+                });
               }
-            };
 
-            console.log("✅ Game loaded successfully");
+              // Transaction function
+              window.BuyLivesJS = async function (receiver, lamports) {
+                try {
+                  if (!window.solana || !window.solana.isPhantom) {
+                    throw new Error('Phantom wallet not found');
+                  }
 
-          }).catch((message) => {
-            console.error('❌ Unity loading failed:', message);
-            alert('Failed to load game: ' + message);
-          });
-        };
-        
-        
-        
-        document.body.appendChild(script);
+                  // Ensure wallet is connected
+                  if (!window.solana.isConnected) {
+                    await window.solana.connect();
+                  }
+
+                  const connection = new solanaWeb3.Connection(
+                    solanaWeb3.clusterApiUrl('devnet'),
+                    'confirmed'
+                  );
+
+                  const transaction = new solanaWeb3.Transaction().add(
+                    solanaWeb3.SystemProgram.transfer({
+                      fromPubkey: window.solana.publicKey,
+                      toPubkey: new solanaWeb3.PublicKey(receiver),
+                      lamports: parseInt(lamports)
+                    })
+                  );
+
+                  transaction.feePayer = window.solana.publicKey;
+                  const { blockhash } = await connection.getLatestBlockhash();
+                  transaction.recentBlockhash = blockhash;
+
+                  const signature = await window.solana.signAndSendTransaction(transaction);
+                  await connection.confirmTransaction(signature, 'confirmed');
+
+                  console.log('✅ Transaction confirmed:', signature);
+                  unityInstance.SendMessage('BuyLivesButton', 'OnPaymentSuccess');
+                  
+                } catch (err) {
+                  console.error('❌ Transaction failed:', err);
+                  unityInstance.SendMessage('BuyLivesButton', 'OnPaymentFailed', err.message);
+                }
+              };
+
+              console.log("✅ Game loaded successfully");
+
+            }).catch((message) => {
+              console.error('❌ Unity loading failed:', message);
+              
+              // Show detailed error message
+              document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #222; color: white; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; padding: 20px;">
+                  <div style="background: #333; padding: 40px; border-radius: 10px; max-width: 600px; text-align: center;">
+                    <h2 style="color: #ff6b6b; margin-bottom: 20px;">❌ Game Loading Failed</h2>
+                    <p style="margin-bottom: 20px;">Error: ${message}</p>
+                    <div style="background: #111; padding: 20px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
+                      <h3>Common solutions:</h3>
+                      <ul>
+                        <li>Make sure you're running this from a web server (not file://)</li>
+                        <li>Check that all Unity build files are present in the Build folder</li>
+                        <li>Verify your internet connection</li>
+                        <li>Try refreshing the page</li>
+                        <li>Check browser console for detailed error messages</li>
+                      </ul>
+                    </div>
+                    <button onclick="location.reload()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              `;
+            });
+          };
+          
+          script.onerror = () => {
+            console.error('❌ Failed to load Unity loader script');
+            document.getElementById('error-overlay').style.display = 'block';
+          };
+          
+          document.body.appendChild(script);
+        });
       });
     });
   </script>
