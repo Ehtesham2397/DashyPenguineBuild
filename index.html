@@ -28,17 +28,27 @@
       return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     }
 
-    // Auto-redirect with multiple Phantom deeplink formats
+    // Correct Phantom deeplink formats based on official docs
     function tryPhantomDeeplinks(appUrl) {
       const encodedUrl = encodeURIComponent(appUrl);
+      const encodedRef = encodeURIComponent(window.location.origin);
+      
+      // Based on official Phantom documentation
       const deeplinks = [
-        `phantom://browse/${encodedUrl}`,  // Most reliable custom protocol
-        `https://phantom.app/ul/browse/${encodedUrl}`, // Universal link
-        `phantom://v1/browse/${encodedUrl}`, // Alternative protocol
-        `https://phantom.app/ul/v1/browse/${encodedUrl}` // Alternative universal
+        // Official format: https://phantom.app/ul/browse/{url}?ref={ref}
+        `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`,
+        // Alternative with query parameters
+        `https://phantom.app/ul/browse?url=${encodedUrl}&ref=${encodedRef}`,
+        // Custom protocol versions
+        `phantom://browse?url=${encodedUrl}&ref=${encodedRef}`,
+        `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`,
+        // Fallback formats
+        `https://phantom.app/ul/browse/${encodedUrl}`,
+        `phantom://browse/${encodedUrl}`
       ];
       
       let currentIndex = 0;
+      let redirectTimeout;
       
       function tryNextDeeplink() {
         if (currentIndex >= deeplinks.length) {
@@ -50,24 +60,46 @@
         const currentDeeplink = deeplinks[currentIndex];
         console.log(`🔄 Trying deeplink ${currentIndex + 1}/${deeplinks.length}:`, currentDeeplink);
         
-        // Create a hidden iframe to test if the deeplink works
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = currentDeeplink;
-        document.body.appendChild(iframe);
+        // Clear any existing timeout
+        if (redirectTimeout) {
+          clearTimeout(redirectTimeout);
+        }
         
-        // Also try direct window location change
-        setTimeout(() => {
+        // Try to open the deeplink
+        try {
+          // Method 1: Direct window location
           window.location.href = currentDeeplink;
-        }, 500);
+          
+          // Method 2: Create invisible link and click it
+          const link = document.createElement('a');
+          link.href = currentDeeplink;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+        } catch (error) {
+          console.log(`Deeplink ${currentIndex + 1} failed:`, error);
+        }
         
-        // If we're still here after 3 seconds, try the next one
-        setTimeout(() => {
-          document.body.removeChild(iframe);
+        // If we're still here after 2.5 seconds, try the next one
+        redirectTimeout = setTimeout(() => {
           currentIndex++;
           tryNextDeeplink();
-        }, 3000);
+        }, 2500);
       }
+      
+      // Add page visibility change listener to detect if user left (deeplink worked)
+      const handleVisibilityChange = () => {
+        if (document.hidden) {
+          console.log('✅ Page became hidden - deeplink likely worked!');
+          if (redirectTimeout) {
+            clearTimeout(redirectTimeout);
+          }
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       
       // Start trying deeplinks
       tryNextDeeplink();
