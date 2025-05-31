@@ -175,41 +175,83 @@
       console.log("User agent:", navigator.userAgent);
 
       if (isMobileDevice() && !isPhantomBrowser()) {
-        // Show loading screen while trying automatic redirects
+        // Create an interactive deeplink button (required for Phantom to work)
+        const encodedUrl = encodeURIComponent(gameUrl);
+        const encodedRef = encodeURIComponent(window.location.origin);
+        const phantomDeeplink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
+        
         document.body.innerHTML = `
-          <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-            <div style="font-size: 48px; margin-bottom: 20px; animation: pulse 2s infinite;">👻</div>
-            <h2 style="color: #333;">Opening Phantom...</h2>
-            <div style="margin: 20px 0;">
-              <div style="
-                width: 40px; 
-                height: 40px; 
-                border: 4px solid #f3f3f3;
-                border-top: 4px solid #667eea; 
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto;
-              "></div>
+          <div style="
+            text-align: center; 
+            padding: 30px; 
+            font-family: Arial, sans-serif; 
+            max-width: 400px; 
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+          ">
+            <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; backdrop-filter: blur(10px);">
+              <div style="font-size: 64px; margin-bottom: 20px;">👻</div>
+              <h1 style="margin-bottom: 15px; font-size: 24px;">DashyPenguin</h1>
+              <p style="margin-bottom: 30px; opacity: 0.9; font-size: 16px;">
+                Click below to open the game in Phantom's secure browser
+              </p>
+              
+              <a href="${phantomDeeplink}" style="
+                display: inline-block;
+                background: rgba(255,255,255,0.9);
+                color: #333;
+                text-decoration: none;
+                padding: 16px 32px;
+                border-radius: 50px;
+                font-weight: bold;
+                font-size: 18px;
+                margin: 10px 0;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+                transition: all 0.3s ease;
+              " onclick="trackClick()">
+                🚀 Open in Phantom
+              </a>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <p style="font-size: 14px; opacity: 0.8; margin-bottom: 15px;">
+                  Don't have Phantom installed?
+                </p>
+                <a href="https://phantom.app/download" target="_blank" style="
+                  color: rgba(255,255,255,0.8);
+                  text-decoration: underline;
+                  font-size: 14px;
+                ">Download Phantom Wallet</a>
+              </div>
             </div>
-            <p style="color: #666; font-size: 14px;">Redirecting automatically...</p>
           </div>
+          
           <style>
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-            @keyframes pulse {
-              0% { transform: scale(1); }
-              50% { transform: scale(1.1); }
-              100% { transform: scale(1); }
+            body { margin: 0; padding: 0; }
+            a:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 12px 35px rgba(0,0,0,0.3) !important;
             }
           </style>
         `;
 
-        // Start automatic deeplink attempts
-        setTimeout(() => {
-          tryPhantomDeeplinks(gameUrl);
-        }, 1000);
+        // Add click tracking
+        window.trackClick = function() {
+          console.log('🎯 User clicked Phantom deeplink:', phantomDeeplink);
+          
+          // Show feedback
+          setTimeout(() => {
+            const link = document.querySelector('a[href*="phantom.app"]');
+            if (link) {
+              link.innerHTML = '⏳ Opening Phantom...';
+              link.style.background = 'rgba(255,255,255,0.7)';
+            }
+          }, 100);
+        };
 
         return; // Stop further execution
       }
